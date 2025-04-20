@@ -1,28 +1,24 @@
 <?php
-class Database {
-  // تعريف الخصائص الخاصة بالاتصال بقاعدة البيانات
-  private $host = "localhost";  // اسم الخادم (الافتراضي هو "localhost")
-  private $dbname = "cmt";      // اسم قاعدة البيانات
-  private $user = "root";       // اسم المستخدم لقاعدة البيانات (الافتراضي في البيئات المحلية هو "root")
-  private $pass = "";           // كلمة مرور قاعدة البيانات (الافتراضي في البيئات المحلية هو فارغ)
+// تضمين ملف الاتصال بقاعدة البيانات
+require_once 'Database.php';
 
-  // دالة الاتصال بقاعدة البيانات
-  public function connect() {
-    try {
-      // محاولة إنشاء اتصال بقاعدة البيانات باستخدام mysqli
-      $conn = new mysqli($this->host, $this->user, $this->pass, $this->dbname);
+// إنشاء كائن من فئة Database
+$db = new Database();
 
-      // التحقق من وجود خطأ في الاتصال
-      if ($conn->connect_error) {
-        // إذا فشل الاتصال، سيتم رمي استثناء مع رسالة الخطأ
-        throw new Exception("فشل الاتصال بقاعدة البيانات: " . $conn->connect_error);
-      }
+// الاتصال بقاعدة البيانات
+$conn = $db->connect();
 
-      // إذا تم الاتصال بنجاح، يتم إرجاع الاتصال
-      return $conn;
-    } catch (Exception $e) {
-      // إذا حدث استثناء أثناء الاتصال بقاعدة البيانات، سيتم تسجيل الخطأ في ملف logs
-      error_log("Database Connection Error: " . $e->getMessage()); // سجل الخطأ في ملف السجلات
+// إجراء استعلام على قاعدة البيانات
+$query = "SELECT * FROM users";
+$stmt = $conn->prepare($query);
+$stmt->execute();
+$results = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-      // إيقاف البرنامج مع رسالة موجهة للمستخدم بعدم القدرة على الاتصال بقاعدة البيانات
-      die("⚠️ حدث خطأ أثناء الاتصال بقاعدة البيانات. الرجاء المحاولة لاحقًا.");
+// عرض النتائج
+foreach ($results as $row) {
+    echo $row['name'] . " - " . $row['email'] . "<br>";
+}
+
+// إغلاق الاتصال
+$db->disconnect();
+?>
