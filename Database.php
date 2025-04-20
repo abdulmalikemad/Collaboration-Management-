@@ -1,84 +1,32 @@
 <?php
-class User {
-  private $conn;
+class Database {
+  // تعريف الخصائص الخاصة بالاتصال بقاعدة البيانات
+  private $host = "localhost";  // اسم الخادم (الافتراضي هو "localhost")
+  private $dbname = "cmt";      // اسم قاعدة البيانات
+  private $user = "root";       // اسم المستخدم لقاعدة البيانات (الافتراضي في البيئات المحلية هو "root")
+  private $pass = "";           // كلمة مرور قاعدة البيانات (الافتراضي في البيئات المحلية هو فارغ)
 
-  public function __construct($conn) {
-    $this->conn = $conn;
-  }
-
-  //  التسجيل بدون تشفير
-  public function register($data) {
+  // دالة الاتصال بقاعدة البيانات
+  public function connect() {
     try {
-      $name = $data['name'];
-      $studentId = $data['studentId'];
-      $email = $data['email'];
-      $password = $data['password'];
-      $confirm = $data['confirmPassword'];
-      $gender = $data['gender'];
+      // محاولة إنشاء اتصال بقاعدة البيانات باستخدام mysqli
+      $conn = new mysqli($this->host, $this->user, $this->pass, $this->dbname);
 
-      $role = str_starts_with($studentId, '1') ? 'دكتور' :
-             (str_starts_with($studentId, '2') ? 'طالب' : 'غير معروف');
-
-      if ($password !== $confirm) {
-        return " كلمتا المرور غير متطابقتين";
+      // التحقق من وجود خطأ في الاتصال
+      if ($conn->connect_error) {
+        // إذا فشل الاتصال، سيتم رمي استثناء مع رسالة الخطأ
+        throw new Exception("فشل الاتصال بقاعدة البيانات: " . $conn->connect_error);
       }
 
-      //  بدون تشفير
-      $stmt = $this->conn->prepare("INSERT INTO users (name, student_id, email, password, gender, role) VALUES (?, ?, ?, ?, ?, ?)");
-      $stmt->bind_param("ssssss", $name, $studentId, $email, $password, $gender, $role);
-
-      if ($stmt->execute()) {
-        return "تم التسجيل بنجاح!";
-      } else {
-        return " فشل التسجيل: " . $stmt->error;
-      }
-
+      // إذا تم الاتصال بنجاح، يتم إرجاع الاتصال
+      return $conn;
     } catch (Exception $e) {
-      return " حدث خطأ: " . $e->getMessage();
-    }
-  }
+      // إذا حدث استثناء أثناء الاتصال بقاعدة البيانات، سيتم تسجيل الخطأ في ملف logs
+      error_log("Database Connection Error: " . $e->getMessage()); // سجل الخطأ في ملف السجلات
 
-  // 🔑 تسجيل الدخول بدون تحقق من تشفير
-  public function login($data) {
-    try {
-      $studentId = $data['studentId'];
-      $password = $data['password'];
-
-      $stmt = $this->conn->prepare("SELECT * FROM users WHERE student_id = ? LIMIT 1");
-      $stmt->bind_param("s", $studentId);
-      $stmt->execute();
-      $result = $stmt->get_result();
-
-      if ($result->num_rows === 0) {
-        return " لا يوجد مستخدم بهذا الرقم";
-      }
-
-      $user = $result->fetch_assoc();
-
-      if ($password !== $user['password']) {
-        return "كلمة المرور غير صحيحة";
-      }
-
-      $_SESSION['user'] = [
-        'id' => $user['id'],
-        'name' => $user['name'],
-        'student_id' => $user['student_id'],
-        'role' => $user['role']
-      ];
-
-      if ($user['role'] === 'طالب') {
-        header("Location: student_dashboard.php");
-        exit();
-      } elseif ($user['role'] === 'دكتور') {
-        header("Location: supervisor_dashboard.php");
-        exit();
-      } else {
-        return "دور المستخدم غير معروف.";
-      }
-
-    } catch (Exception $e) {
-      return "خطأ أثناء تسجيل الدخول: " . $e->getMessage();
-    }
+      // إيقاف البرنامج مع رسالة موجهة للمستخدم بعدم القدرة على الاتصال بقاعدة البيانات
+      die("⚠ حدث خطأ أثناء الاتصال بقاعدة البيانات. الرجاء المحاولة لاحقًا.");
+   }
   }
 }
 ?>
