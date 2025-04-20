@@ -1,116 +1,42 @@
-<!DOCTYPE html>
-<html lang="ar">
-<head>
-  <meta charset="UTF-8">
-  <title>إنشاء حساب | CMT</title>
-  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@500&display=swap" rel="stylesheet">
-  <style>
-    body {
-      font-family: 'Cairo', sans-serif;
-      margin: 0;
-      background: linear-gradient(to right, #e3f2fd, #f1f5f9);
-      direction: rtl;
-    }
-    header {
-      background-color: #1e3a8a;
-      color: white;
-      padding: 20px;
-      text-align: center;
-      font-size: 26px;
-      font-weight: bold;
-    }
-    .container {
-      max-width: 600px;
-      margin: 50px auto;
-      background-color: white;
-      padding: 40px;
-      border-radius: 16px;
-      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.1);
-    }
-    h2 {
-      color: #0d47a1;
-      text-align: center;
-      margin-bottom: 30px;
-    }
-    label {
-      display: block;
-      font-weight: bold;
-      margin-bottom: 6px;
-      margin-top: 15px;
-      color: #333;
-    }
-    input, select {
-      width: 100%;
-      padding: 12px;
-      border-radius: 10px;
-      border: 1px solid #ccc;
-      margin-bottom: 16px;
-      font-size: 16px;
-      transition: border-color 0.3s ease;
-    }
-    input:focus, select:focus {
-      border-color: #3b82f6;
-      outline: none;
-    }
-    button {
-      background-color: #3b82f6;
-      color: white;
-      border: none;
-      border-radius: 10px;
-      padding: 14px;
-      font-size: 17px;
-      font-weight: bold;
-      width: 100%;
-      cursor: pointer;
-      transition: background 0.3s;
-    }
-    button:hover {
-      background-color: #1d4ed8;
-    }
-    footer {
-      text-align: center;
-      font-size: 14px;
-      padding: 20px;
-      color: #666;
-      margin-top: 40px;
-    }
-  </style>
-</head>
-<body>
-  <header>📘 إنشاء حساب جديد - نظام CMT</header>
+<?php
+include 'database_connection.php';
+// تضمين ملف الاتصال بقاعدة البيانات
+include 'database_connection.php';
 
-  <div class="container">
-    <h2>✍️ التسجيل</h2>
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    // جمع البيانات المدخلة في النموذج
+    $name = $_POST['name'];
+    $studentId = $_POST['studentId'];
+    $email = $_POST['email'];
+    $password = $_POST['password'];
+    $confirmPassword = $_POST['confirmPassword'];
+    $gender = $_POST['gender'];
 
-    <form method="POST" action="registration.php">
-      <label>الاسم الكامل:</label>
-      <input type="text" name="name" required>
+    // التحقق من صحة البيانات المدخلة
+    if (empty($name) || empty($studentId) || empty($email) || empty($password) || empty($confirmPassword) || empty($gender)) {
+        echo "جميع الحقول مطلوبة.";
+        exit;
+    }
 
-      <label>رقم القيد:</label>
-      <input type="text" name="studentId" required>
+    if ($password !== $confirmPassword) {
+        echo "كلمات المرور غير متطابقة.";
+        exit;
+    }
 
-      <label>البريد الإلكتروني:</label>
-      <input type="email" name="email" required>
+    // هنا يمكنك تشفير كلمة المرور
+    $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
 
-      <label>كلمة المرور:</label>
-      <input type="password" name="password" required>
+    // إدخال البيانات في قاعدة البيانات
+    $sql = "INSERT INTO users (name, studentId, email, password, gender) 
+            VALUES ('$name', '$studentId', '$email', '$hashedPassword', '$gender')";
 
-      <label>تأكيد كلمة المرور:</label>
-      <input type="password" name="confirmPassword" required>
+    if ($conn->query($sql) === TRUE) {
+        echo "تم إنشاء الحساب بنجاح!";
+    } else {
+        echo "خطأ في إنشاء الحساب: " . $conn->error;
+    }
 
-      <label>الجنس:</label>
-      <select name="gender" required>
-        <option value="">-- اختر --</option>
-        <option value="ذكر">ذكر</option>
-        <option value="أنثى">أنثى</option>
-      </select>
-
-      <button type="submit">📥 إنشاء الحساب</button>
-    </form>
-  </div>
-
-  <footer>
-    جميع الحقوق محفوظة &copy; 2025 - نظام إدارة المشاريع CMT
-  </footer>
-</body>
-</html>
+    // غلق الاتصال
+    $conn->close();
+}
+?>
