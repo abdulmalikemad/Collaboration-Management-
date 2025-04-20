@@ -1,3 +1,38 @@
+<?php
+
+session_start(); // بدء الجلسة للتعامل مع الرسائل المرسلة
+require_once 'Database.php'; // استيراد ملف الاتصال بقاعدة البيانات
+require_once 'User.php'; // استيراد ملف الكود المتعلق بالمستخدم
+// إنشاء كائن من قاعدة البيانات
+$db = new Database();
+$conn = $db->connect(); // الاتصال بقاعدة البيانات
+
+// إنشاء كائن من فئة User
+$user = new User($conn);
+$success = null; // متغير لتخزين الرسالة الناجحة
+
+// إذا كان الطلب من نوع POST
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+  try {
+    // محاولة تسجيل المستخدم
+    $result = $user->register($_POST);
+    
+    // إذا كانت النتيجة تحتوي على رمز ✅
+    if (str_starts_with($result, '✅')) {
+      $success = $result; // حفظ الرسالة الناجحة
+    } else {
+      $_SESSION['register_error'] = $result; // حفظ رسالة الخطأ في الجلسة
+      header("Location: registration.php"); // إعادة التوجيه إلى نفس الصفحة
+      exit();
+    }
+  } catch (Exception $e) {
+    // في حالة حدوث استثناء (خطأ)
+    $_SESSION['register_error'] = "❌ حدث خطأ أثناء التسجيل."; // حفظ رسالة الخطأ في الجلسة
+    header("Location: registration.php"); // إعادة التوجيه إلى نفس الصفحة
+    exit();
+  }
+}
+?>
 <!DOCTYPE html>
 <html lang="ar">
 <head>
