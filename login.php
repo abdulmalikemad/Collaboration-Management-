@@ -1,14 +1,54 @@
+<?php
+//  بدء الجلسة لتخزين بيانات المستخدم مؤقتًا
+session_start();
+
+//  استدعاء ملفات الربط بقاعدة البيانات وفئة المستخدم
+require_once 'Database.php';
+require_once 'User.php';
+
+//  إنشاء اتصال بقاعدة البيانات
+$db = new Database();
+$conn = $db->connect();
+
+//  إنشاء كائن من كلاس User لإجراء عمليات تسجيل الدخول
+$user = new User($conn);
+$message = null;
+
+// التحقق إذا تم إرسال النموذج بطريقة POST
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+  try {
+    // محاولة تسجيل الدخول باستخدام بيانات المستخدم المدخلة
+    $message = $user->login($_POST);
+
+    //  في حال كانت النتيجة غير ناجحة، حفظ الخطأ وإعادة التوجيه
+    if ($message !== 'success') {
+      $_SESSION['login_error'] = $message;
+      header("Location: login.php");
+      exit();
+    }
+
+    //  يمكنك هنا إعادة توجيه المستخدم إلى الصفحة الرئيسية في حال نجاح تسجيل الدخول
+    // header("Location: dashboard.php");
+
+  } catch (Exception $e) {
+    // في حال حدوث خطأ غير متوقع، عرض رسالة خطأ عامة
+    $_SESSION['login_error'] = "حدث خطأ أثناء محاولة تسجيل الدخول.";
+    header("Location: login.php");
+    exit();
+  }
+}
+?>
 <!DOCTYPE html>
 <html lang="ar">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>تسجيل الدخول | CMT</title>
-  <!-- استيراد خط Cairo من Google Fonts -->
+
+  <!-- استيراد خط Cairo للواجهة -->
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap" rel="stylesheet">
 
   <style>
-    /* تعيين الخط العام وتنسيق الجسم الرئيسي للصفحة */
     body {
       font-family: 'Cairo', sans-serif;
       background: #e0f2fe;
@@ -18,7 +58,7 @@
       flex-direction: column;
       min-height: 100vh;
     }
-    /* تنسيق رأس الصفحة */
+
     header {
       background-color: #1e3a8a;
       color: white;
@@ -27,7 +67,7 @@
       font-size: 24px;
       font-weight: bold;
     }
-    /* منطقة المحتوى الرئيسي في وسط الصفحة */
+
     main {
       flex: 1;
       display: flex;
@@ -35,7 +75,7 @@
       align-items: center;
       padding: 40px 20px;
     }
-    /* مربع تسجيل الدخول */
+
     .login-box {
       background: white;
       padding: 40px;
@@ -44,20 +84,20 @@
       width: 100%;
       max-width: 500px;
     }
-    /* عنوان النموذج */
+
     .login-box h2 {
       text-align: center;
       color: #1d4ed8;
       margin-bottom: 30px;
     }
-    /* تنسيق التسميات */
+
     label {
       display: block;
       margin-bottom: 8px;
       color: #111827;
       font-weight: bold;
     }
-    /* تنسيق حقول الإدخال */
+
     input {
       width: 100%;
       padding: 12px;
@@ -66,11 +106,11 @@
       margin-bottom: 20px;
       font-size: 16px;
     }
-    /* حاوية حقل كلمة المرور مع زر إظهار/إخفاء */
+
     .password-wrapper {
       position: relative;
     }
-    /* زر إظهار/إخفاء كلمة المرور */
+
     .toggle-password {
       position: absolute;
       left: -17px;
@@ -80,7 +120,7 @@
       border: none;
       cursor: pointer;
     }
-    /* زر إرسال النموذج */
+
     button[type="submit"] {
       width: 100%;
       background-color: #3b82f6;
@@ -93,20 +133,32 @@
       font-weight: bold;
       transition: 0.3s;
     }
+
     button[type="submit"]:hover {
       background-color: #2563eb;
     }
-    /* روابط أسفل نموذج تسجيل الدخول */
+
     .back-link {
       text-align: center;
       margin-top: 20px;
     }
+
     .back-link a {
       color: #1d4ed8;
       text-decoration: none;
       font-weight: bold;
     }
-    /* تنسيق تذييل الصفحة */
+
+    .error {
+      background-color: #ffebee;
+      color: #c62828;
+      padding: 10px;
+      margin-bottom: 20px;
+      border-radius: 8px;
+      font-weight: bold;
+      text-align: center;
+    }
+
     footer {
       background: #f1f5f9;
       text-align: center;
@@ -125,22 +177,26 @@
     <div class="login-box">
       <h2>تسجيل الدخول</h2>
 
+      <!-- عرض رسالة الخطأ إذا وُجدت -->
+      <?php if (isset($_SESSION['login_error'])): ?>
+        <div class="error"><?= $_SESSION['login_error'] ?></div>
+        <?php unset($_SESSION['login_error']); ?>
+      <?php endif; ?>
+
       <!-- نموذج تسجيل الدخول -->
-      <form>
-        <!-- حقل رقم القيد -->
+      <form method="POST" action="login.php">
+        <!-- إدخال رقم القيد -->
         <label for="studentId">رقم القيد</label>
         <input type="text" id="studentId" name="studentId" required>
 
-        <!-- حقل كلمة المرور -->
+        <!-- إدخال كلمة المرور -->
         <label for="password">كلمة المرور</label>
         <div class="password-wrapper">
           <input type="password" id="password" name="password" required>
-          <button type="button" class="toggle-password" onclick="togglePassword(this)">
-            👁
-          </button>
+          <button type="button" class="toggle-password" onclick="togglePassword(this)">👁</button>
         </div>
 
-        <!-- زر إرسال النموذج -->
+        <!-- زر الدخول -->
         <button type="submit">دخول</button>
       </form>
 
@@ -155,7 +211,7 @@
   <!-- تذييل الصفحة -->
   <footer>جميع الحقوق محفوظة &copy; 2025 - نظام CMT</footer>
 
-  <!-- سكربت لإظهار وإخفاء كلمة المرور -->
+  <!-- سكربت إظهار/إخفاء كلمة المرور -->
   <script>
     function togglePassword(el) {
       const input = el.parentElement.querySelector('input');
