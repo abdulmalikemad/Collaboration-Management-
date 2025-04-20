@@ -3,6 +3,10 @@
 session_start(); // بدء الجلسة للتعامل مع الرسائل المرسلة
 require_once 'Database.php'; // استيراد ملف الاتصال بقاعدة البيانات
 require_once 'User.php'; // استيراد ملف الكود المتعلق بالمستخدم
+// إنشاء كائن من قاعدة البيانات
+$db = new Database();
+$conn = $db->connect(); // الاتصال بقاعدة البيانات
+
 // إنشاء كائن من فئة User
 $user = new User($conn);
 $success = null; // متغير لتخزين الرسالة الناجحة
