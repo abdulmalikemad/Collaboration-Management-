@@ -145,5 +145,45 @@ class User {
       return false;
     }
   }
+  // ✅ جلب كل الطلاب من قاعدة البيانات
+public function getAllStudents($search = '') {
+  try {
+    if (!empty($search)) {
+      $like = '%' . $search . '%';
+      $stmt = $this->conn->prepare("SELECT * FROM users WHERE role = 'طالب' AND (name LIKE ? OR student_id LIKE ?)");
+      $stmt->bind_param("ss", $like, $like);
+    } else {
+      $stmt = $this->conn->prepare("SELECT * FROM users WHERE role = 'طالب'");
+    }
+
+    $stmt->execute();
+    return $stmt->get_result();
+
+  } catch (Exception $e) {
+    error_log("❌ Error in getAllStudents: " . $e->getMessage());
+    return false;
+  }
 }
+// ✅ جلب مستخدم حسب ID والدور
+public function getUserByIdAndRole($id, $role) {
+  try {
+    $stmt = $this->conn->prepare("SELECT * FROM users WHERE id = ? AND role = ?");
+    $stmt->bind_param("is", $id, $role);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    if ($result->num_rows === 0) {
+      return null;
+    }
+
+    return $result->fetch_assoc();
+
+  } catch (Exception $e) {
+    error_log("❌ Error in getUserByIdAndRole: " . $e->getMessage());
+    return false;
+  }
+}
+
+}
+
 ?>
