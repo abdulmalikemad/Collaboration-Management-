@@ -9,13 +9,8 @@ if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'دكتور') {
 $name = $_SESSION['user']['name'];
 $id = $_SESSION['user']['id'];
 
-<<<<<<< HEAD
-require_once 'Database.php';
-require_once 'Project.php';
-=======
 require_once '../UserManagementModule/Database.php';
 require_once '../ProjectManagementModule/Project.php';
->>>>>>> c5b994a (project unit)
 
 try {
   $db = new Database();
@@ -126,11 +121,7 @@ try {
           <path d="M12 22c1.1 0 1.99-.9 1.99-2h-4a2 2 0 002.01 2zM18.29 17H5.71c-.45 0-.67-.54-.35-.85l1.8-1.79V9c0-3.07 1.64-5.64 4.5-6.32V2.5a1.5 1.5 0 113 0v.18c2.86.68 4.5 3.25 4.5 6.32v5.36l1.8 1.79c.32.31.1.85-.35.85z"/>
         </svg>
         <span><strong>لديك <?= $pendingProjects->num_rows ?> مشروع/مشاريع</strong> بانتظار الموافقة</span>
-<<<<<<< HEAD
-        <a href="supervisor_requests.php?id=<?= $id ?>" style="
-=======
         <a href="../ProjectManagementModule/supervisor_requests.php?id=<?= $id ?>" style="
->>>>>>> c5b994a (project unit)
           background-color: #1e88e5;
           color: white;
           padding: 6px 14px;
@@ -143,17 +134,10 @@ try {
     <?php endif; ?>
 
     <div style="display: flex; flex-direction: column; gap: 20px; align-items: center;">
-<<<<<<< HEAD
-      <a class="action-button" href="supervisor_requests.php?id=<?= $id ?>">
-        📌 عرض طلبات المشاريع بانتظار الموافقة
-      </a>
-      <a class="action-button" href="supervisor_active.php?id=<?= $id ?>" style="background: linear-gradient(to left, #66bb6a, #43a047);">
-=======
       <a class="action-button" href="../ProjectManagementModule/supervisor_requests.php?id=<?= $id ?>">
         📌 عرض طلبات المشاريع بانتظار الموافقة
       </a>
       <a class="action-button" href="../ProjectManagementModule/supervisor_active.php?id=<?= $id ?>" style="background: linear-gradient(to left, #66bb6a, #43a047);">
->>>>>>> c5b994a (project unit)
         📂 عرض المشاريع الجارية
       </a>
     </div>
