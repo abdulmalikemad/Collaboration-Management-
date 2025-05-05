@@ -13,7 +13,16 @@ class FileManager {
     return $stmt->execute();
   }
 
-  
+  //  2. استبدال ملف موجود (replaceTaskFile)
+  public function replaceTaskFile($taskId, $studentId, $newFilePath) {
+    // حذف الملف القديم
+    $deleteStmt = $this->conn->prepare("DELETE FROM task_files WHERE task_id = ? AND student_id = ?");
+    $deleteStmt->bind_param("ii", $taskId, $studentId);
+    $deleteStmt->execute();
 
- 
+    // رفع الملف الجديد
+    return $this->uploadTaskFile($taskId, $studentId, $newFilePath);
+  }
+  
 }
+
