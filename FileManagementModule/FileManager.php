@@ -22,7 +22,39 @@ class FileManager {
 
     // رفع الملف الجديد
     return $this->uploadTaskFile($taskId, $studentId, $newFilePath);
+    
+  }
+  //  3. عرض الملفات لطالب لمهمة معينة
+public function getFilesForStudent($taskId, $studentId) {
+    $stmt = $this->conn->prepare("SELECT * FROM task_files WHERE task_id = ? AND student_id = ?");
+    $stmt->bind_param("ii", $taskId, $studentId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $files = [];
+    while ($row = $result->fetch_assoc()) {
+      $files[] = $row;
+    }
+    return $files;
   }
   
+   //  4. عرض كل ملفات مشروع 
+public function getFilesByTask($taskId) {
+    $stmt = $this->conn->prepare("
+      SELECT tf.*, u.name AS student_name 
+      FROM task_files tf 
+      JOIN users u ON tf.student_id = u.id 
+      WHERE tf.task_id = ? 
+      ORDER BY tf.upload_date DESC
+    ");
+    $stmt->bind_param("i", $taskId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+  
+    $files = [];
+    while ($row = $result->fetch_assoc()) {
+      $files[] = $row;
+    }
+    return $files;
+  }
 }
 
