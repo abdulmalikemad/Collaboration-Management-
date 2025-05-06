@@ -8,10 +8,13 @@ if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'دكتور') {
 require_once '../UserManagementModule/Database.php';
 require_once __DIR__ . '/TaskManager.php';
 require_once __DIR__ . '/CommentManager.php';
+require_once __DIR__ . '/../FileManagementModule/FileManager.php';
+
 $db = new Database();
 $conn = $db->connect();
 $taskManager = new TaskManager($conn);
 $commentManager = new CommentManager($conn);
+$fileManager = new FileManager($conn);
 
 $supervisor_id = $_SESSION['user']['id'];
 $supervisor_name = $_SESSION['user']['name'];
@@ -21,17 +24,12 @@ $message = null;
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['postpone_task'], $_POST['new_due_date'])) {
   $taskId = (int) $_POST['postpone_task'];
   $newDueDate = $_POST['new_due_date'];
-
   $stmt = $conn->prepare("UPDATE tasks SET due_date = ? WHERE id = ?");
   $stmt->bind_param("si", $newDueDate, $taskId);
-  if ($stmt->execute()) {
-    $message = "✅ تم تأجيل الموعد النهائي بنجاح.";
-  } else {
-    $message = "❌ حدث خطأ أثناء التأجيل.";
-  }
+  $message = $stmt->execute() ? "✅ تم تأجيل الموعد النهائي بنجاح." : "❌ حدث خطأ أثناء التأجيل.";
 }
 
-// إضافة تعليق من المشرف
+// إضافة تعليق
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['task_id'], $_POST['comment']) && !isset($_POST['postpone_task'])) {
   $task_id = (int) $_POST['task_id'];
   $comment = trim($_POST['comment']);
@@ -41,7 +39,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['task_id'], $_POST['co
   }
 }
 
-// عرض المهام
 $project_id = $_GET['project_id'] ?? null;
 $tasksResult = $project_id
   ? $taskManager->getTasksByProject($project_id)
@@ -59,11 +56,13 @@ $tasksResult = $project_id
     header { background-color: #1e3a8a; color: white; padding: 20px; text-align: center; font-size: 24px; font-weight: bold; }
     main { max-width: 1000px; margin: 30px auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
     h2 { text-align: center; color: #0d47a1; margin-bottom: 30px; }
-    .task-box { border: 1px solid #ddd; padding: 20px; border-radius: 12px; margin-bottom: 25px; background-color: #f9f9f9; }
-    .task-box h3 { margin: 0 0 10px; color: #1e88e5; }
+    .task-box { border: 1px solid #ddd; padding: 20px; border-radius: 12px; margin-bottom: 25px; background-color: #f9f9f9; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
     .file-entry, .comment-entry {
       background-color: #f1f1f1; border: 1px solid #ccc;
       margin-top: 10px; padding: 10px; border-radius: 8px; font-size: 15px;
+    }
+    .file-box {
+      margin-top: 8px; padding: 6px 10px; background: #e8f5e9; border-radius: 6px;
     }
     .comment-entry span, .file-entry span { font-weight: bold; color: #0d47a1; }
     .download-btn {
@@ -86,7 +85,6 @@ $tasksResult = $project_id
 <header>📋 إدارة المهام لجميع مشاريعك</header>
 <main>
   <h2>المهام التي يشرف عليها د. <?= htmlspecialchars($supervisor_name) ?></h2>
-
   <?php if ($message): ?>
     <p class="success"><?= $message ?></p>
   <?php endif; ?>
@@ -94,16 +92,17 @@ $tasksResult = $project_id
   <?php if ($tasksResult && $tasksResult->num_rows > 0): ?>
     <?php while ($task = $tasksResult->fetch_assoc()): ?>
       <div class="task-box">
-        <h3>📝 <?= htmlspecialchars($task['title']) ?> (<?= htmlspecialchars($task['project_title']) ?>)</h3>
-        <p>📅 من: <?= $task['start_date'] ?> إلى: <?= $task['due_date'] ?> | الحالة: <?= $task['status'] ?? 'غير معروف' ?></p>
+        <h2 style="margin: 0 0 10px; color: #1e88e5;"> <?= htmlspecialchars($task['title']) ?></h2>
+        <p style="color: #555; font-size: 14px;">📅 من: <?= $task['start_date'] ?> إلى: <?= $task['due_date'] ?></p>
 
-        <h4>👥 المكلفون:</h4>
+        <hr style="margin: 20px 0; border: none; border-top: 1px solid #ddd;">
+
+        <h4 style="color: #0d47a1;">👥 الطلاب المكلّفون وملفاتهم:</h4>
         <?php
           $stmt = $conn->prepare("
-            SELECT u.name, f.file_path, f.upload_date 
+            SELECT u.id, u.name 
             FROM task_assignments ta 
             JOIN users u ON ta.student_id = u.id 
-            LEFT JOIN task_files f ON f.task_id = ta.task_id AND f.student_id = u.id
             WHERE ta.task_id = ?
           ");
           $stmt->bind_param("i", $task['id']);
@@ -111,23 +110,30 @@ $tasksResult = $project_id
           $assigned = $stmt->get_result();
 
           if ($assigned->num_rows > 0) {
-            while ($row = $assigned->fetch_assoc()) {
+            while ($student = $assigned->fetch_assoc()) {
               echo "<div class='file-entry'>";
-              echo "<span>👤 {$row['name']}</span>";
-              if ($row['file_path']) {
-                echo " — <a class='download-btn' href='{$row['file_path']}' download>📥 تحميل الملف</a>";
-                echo "<div style='font-size:13px; color:#555;'>⏱ {$row['upload_date']}</div>";
+              echo "👤 <strong>{$student['name']}</strong>";
+
+              $files = $fileManager->getFilesForStudent($task['id'], $student['id']);
+              if (!empty($files)) {
+                foreach ($files as $file) {
+                  echo "<div class='file-box'>";
+                  echo "<a class='download-btn' href='{$file['file_path']}' download>📥 تحميل</a>";
+                  echo " <small style='color:#555;'>⏱ {$file['upload_date']}</small>";
+                  echo "</div>";
+                }
               } else {
-                echo "<span style='color:#b71c1c;'> ❌ لا يوجد ملف مرفوع</span>";
+                echo " — <span style='color:#b71c1c;'>لا يوجد ملف</span>";
               }
+
               echo "</div>";
             }
           } else {
-            echo "<p style='color:#777;'>🚫 لا يوجد طلاب مكلفين.</p>";
+            echo "<p style='color:#777;'> لا يوجد طلاب مكلّفون بهذه المهمة.</p>";
           }
         ?>
 
-        <h4 style="margin-top:20px;">💬 التعليقات:</h4>
+        <h4 style="margin-top: 25px; color: #0d47a1;">💬 التعليقات:</h4>
         <?php
           $comments = $commentManager->getCommentsByTask($task['id']);
           if ($comments && $comments->num_rows > 0) {
@@ -158,7 +164,7 @@ $tasksResult = $project_id
       </div>
     <?php endwhile; ?>
   <?php else: ?>
-    <p style="text-align:center; color:#777;">🚫 لا توجد مهام حاليًا.</p>
+    <p style="text-align:center; color:#777;"> لا توجد مهام حاليًا.</p>
   <?php endif; ?>
 </main>
 </body>
