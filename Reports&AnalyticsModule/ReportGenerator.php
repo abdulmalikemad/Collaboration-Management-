@@ -37,4 +37,53 @@ class ReportGenerator {
         }
     }
 
+    //  دالة لحساب إجمالي المهام في المشروع
+    private function countTasks($projectId) {
+        try {
+            $stmt = $this->conn->prepare("SELECT COUNT(*) FROM tasks WHERE project_id = ?");
+            $stmt->bind_param("i", $projectId);
+            $stmt->execute();
+            $stmt->bind_result($count);
+            $stmt->fetch();
+            return $count;
+        } catch (Exception $e) {
+            // في حالة فشل الاستعلام، رجّع صفر
+            return 0;
+        }
+    }
+
+    //  دالة لحساب عدد المهام حسب الحالة (مكتملة، قيد التنفيذ، الخ)
+    private function countTasksByStatus($projectId, $status) {
+        try {
+            $stmt = $this->conn->prepare("SELECT COUNT(*) FROM tasks WHERE project_id = ? AND status = ?");
+            $stmt->bind_param("is", $projectId, $status);
+            $stmt->execute();
+            $stmt->bind_result($count);
+            $stmt->fetch();
+            return $count;
+        } catch (Exception $e) {
+            // في حالة فشل الاستعلام، رجّع صفر
+            return 0;
+        }
+    }
+
+    //  دالة لحساب عدد الملفات المرتبطة بمهام هذا المشروع
+    private function countFiles($projectId) {
+        try {
+            $stmt = $this->conn->prepare("
+                SELECT COUNT(*) FROM task_files
+                WHERE task_id IN (
+                    SELECT id FROM tasks WHERE project_id = ?
+                )
+            ");
+            $stmt->bind_param("i", $projectId);
+            $stmt->execute();
+            $stmt->bind_result($count);
+            $stmt->fetch();
+            return $count;
+        } catch (Exception $e) {
+            // في حالة فشل الاستعلام، رجّع صفر
+            return 0;
+        }
+    }
 }
