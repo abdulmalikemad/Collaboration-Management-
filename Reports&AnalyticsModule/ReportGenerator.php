@@ -1,28 +1,29 @@
 <?php
 class ReportGenerator {
+    private static $instance = null; // النسخة الوحيدة
     private $conn;
 
-    // المُنشئ - يستقبل اتصال قاعدة البيانات
-    public function __construct($conn) {
+    // المُنشئ خاص لمنع الإنشاء المباشر من برا الكلاس
+    private function __construct($conn) {
         $this->conn = $conn;
     }
 
-    //  توليد تقرير تقدم المشروع
+    // دالة ثابتة ترجع نفس النسخة الوحيدة من الكلاس
+    public static function getInstance($conn) {
+        if (self::$instance === null) {
+            self::$instance = new ReportGenerator($conn);
+        }
+        return self::$instance;
+    }
+
+    // 🔹 توليد تقرير تقدم المشروع
     public function generateProjectProgressReport($projectId) {
         try {
-            // احسب إجمالي المهام
             $totalTasks = $this->countTasks($projectId);
-
-            // احسب عدد المهام المكتملة (الحالة = "مكتملة")
             $completedTasks = $this->countTasksByStatus($projectId, 'مكتملة');
-
-            // احسب عدد الملفات المرفوعة ضمن المهام المرتبطة بالمشروع
             $fileCount = $this->countFiles($projectId);
-
-            // احسب نسبة التقدم = (مكتملة / الكلية) × 100
             $progressRate = $totalTasks > 0 ? round(($completedTasks / $totalTasks) * 100, 2) : 0;
 
-            // رجّع التقرير كمصفوفة بيانات
             return [
                 'total_tasks' => $totalTasks,
                 'completed_tasks' => $completedTasks,
@@ -30,14 +31,13 @@ class ReportGenerator {
                 'files_uploaded' => $fileCount
             ];
         } catch (Exception $e) {
-            // في حالة حدوث خطأ، أرجع رسالة الخطأ بدل البيانات
             return [
                 'error' => 'حدث خطأ أثناء توليد التقرير: ' . $e->getMessage()
             ];
         }
     }
 
-    //  دالة لحساب إجمالي المهام في المشروع
+    // 🔹 دالة لحساب إجمالي المهام في المشروع
     private function countTasks($projectId) {
         try {
             $stmt = $this->conn->prepare("SELECT COUNT(*) FROM tasks WHERE project_id = ?");
@@ -47,12 +47,11 @@ class ReportGenerator {
             $stmt->fetch();
             return $count;
         } catch (Exception $e) {
-            // في حالة فشل الاستعلام، رجّع صفر
             return 0;
         }
     }
 
-    //  دالة لحساب عدد المهام حسب الحالة (مكتملة، قيد التنفيذ، الخ)
+    // 🔹 دالة لحساب عدد المهام حسب الحالة
     private function countTasksByStatus($projectId, $status) {
         try {
             $stmt = $this->conn->prepare("SELECT COUNT(*) FROM tasks WHERE project_id = ? AND status = ?");
@@ -62,12 +61,11 @@ class ReportGenerator {
             $stmt->fetch();
             return $count;
         } catch (Exception $e) {
-            // في حالة فشل الاستعلام، رجّع صفر
             return 0;
         }
     }
 
-    //  دالة لحساب عدد الملفات المرتبطة بمهام هذا المشروع
+    // 🔹 دالة لحساب عدد الملفات
     private function countFiles($projectId) {
         try {
             $stmt = $this->conn->prepare("
@@ -82,7 +80,6 @@ class ReportGenerator {
             $stmt->fetch();
             return $count;
         } catch (Exception $e) {
-            // في حالة فشل الاستعلام، رجّع صفر
             return 0;
         }
     }
