@@ -16,7 +16,8 @@ $projectId = intval($_GET['project_id']);
 
 $db = new Database();
 $conn = $db->connect();
-$report = new ReportGenerator($conn);
+$report = ReportGenerator::getInstance($conn);
+
 
 $data = null;
 try {
