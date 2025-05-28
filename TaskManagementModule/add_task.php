@@ -6,13 +6,12 @@ if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'طالب') {
 }
 
 require_once '../UserManagementModule/Database.php';
-require_once 'Task.php';
-
+require_once '../TaskManagementModule/TaskManager.php'; // ⬅️ التعديل هنا
 
 try {
   $db = new Database();
   $conn = $db->connect();
-  $taskObj = new Task($conn);
+  $taskManager = new TaskManager($conn); // ⬅️ استخدام TaskManager
 
   $userId = $_SESSION['user']['id'];
   $userName = $_SESSION['user']['name'];
@@ -44,7 +43,7 @@ try {
     $assigned = isset($_POST['assigned']) ? $_POST['assigned'] : [];
 
     if (count($assigned) === 2) {
-      if ($taskObj->createTask($title, $start, $due, $project_id, $assigned)) {
+      if ($taskManager->createTask($title, $start, $due, $project_id, $assigned)) {
         header("Location: tasks.php");
         exit();
       } else {
