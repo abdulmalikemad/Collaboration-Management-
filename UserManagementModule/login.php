@@ -1,207 +1,222 @@
+<?php
+session_start(); // بدء جلسة لتخزين بيانات المستخدم بعد تسجيل الدخول
+
+require_once 'Database.php'; // استدعاء ملف الاتصال بقاعدة البيانات
+require_once 'User.php';     // استدعاء كلاس المستخدم
+
+$db = new Database();
+$conn = $db->connect(); // الاتصال بقاعدة البيانات
+
+$user = new User($conn); // إنشاء كائن من كلاس User
+$message = null;
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') { // التحقق من أن الطلب تم إرساله باستخدام POST
+  try {
+    $message = $user->login($_POST); // محاولة تسجيل الدخول باستخدام بيانات النموذج
+
+    // إذا تم تسجيل المستخدم وتم تحديد دوره
+    if (isset($_SESSION['user']) && isset($_SESSION['user']['role'])) {
+      $role = $_SESSION['user']['role'];
+
+      // التوجيه حسب نوع المستخدم
+      if ($role === 'طالب') {
+        header("Location: student_dashboard.php");
+        exit();
+      } elseif ($role === 'دكتور') {
+        header("Location: supervisor_dashboard.php");
+        exit();
+      } elseif ($role === 'ادمن') {
+        header("Location: admin_dashboard.php");
+        exit();
+      } else {
+        // دور غير معروف
+        $_SESSION['login_error'] = "دور المستخدم غير معروف.";
+        header("Location: login.php");
+        exit();
+      }
+
+    } else {
+      // لم يتم تسجيل الدخول
+      $_SESSION['login_error'] = $message;
+      header("Location: login.php");
+      exit();
+    }
+
+  } catch (Exception $e) {
+    // حدث خطأ أثناء المعالجة
+    $_SESSION['login_error'] = "حدث خطأ أثناء محاولة تسجيل الدخول.";
+    header("Location: login.php");
+    exit();
+  }
+}
+?>
+
 <!DOCTYPE html>
 <html lang="ar">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>الصفحة الرئيسية | نظام CMT</title>
+  <title>تسجيل الدخول | CMT</title>
+
+  <!-- استدعاء خط جميل للواجهة -->
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://unpkg.com/aos@2.3.1/dist/aos.css" />
+
+  <!-- تنسيق CSS للواجهة -->
   <style>
-    * {
-      box-sizing: border-box;
-    }
-    html {
-      scroll-behavior: smooth;
-    }
     body {
       font-family: 'Cairo', sans-serif;
+      background: #e0f2fe;
+      direction: rtl;
       margin: 0;
-      background: #f5f9fc;
-      color: #333;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
     }
     header {
-      background: white;
-      padding: 20px 40px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .logo {
-      font-weight: bold;
-      font-size: 24px;
-      color: #3a6ff8;
-    }
-    nav {
-      display: flex;
-      gap: 25px;
-    }
-    nav a {
-      color: #333;
-      text-decoration: none;
-      font-weight: 600;
-      transition: color 0.3s;
-    }
-    nav a:hover {
-      color: #3a6ff8;
-    }
-    .hero {
-      text-align: center;
-      padding: 80px 20px;
-      background: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)),
-                  url('3409297.jpg') center/cover no-repeat;
+      background-color: #1e3a8a;
       color: white;
-    }
-    .hero h1 {
-      font-size: 42px;
-      margin-bottom: 20px;
-    }
-    .hero p {
-      font-size: 20px;
-      max-width: 700px;
-      margin: auto;
-    }
-    .hero button {
-      margin-top: 30px;
-      padding: 12px 30px;
-      background-color: #3a6ff8;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      font-size: 16px;
-      cursor: pointer;
-    }
-    .section {
-      padding: 60px 20px;
-      text-align: center;
-    }
-    .section h2 {
-      color: #1e40af;
-      margin-bottom: 20px;
-    }
-    .section p {
-      max-width: 800px;
-      margin: auto;
-      color: #444;
-    }
-    footer {
-      background-color: #f1f5f9;
       text-align: center;
       padding: 20px;
-      font-size: 14px;
-      margin-top: 40px;
-    }
-
-    .card-container {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 20px;
-      justify-content: center;
-      margin-top: 30px;
-    }
-    .card {
-      background-color: white;
-      padding: 20px 30px;
-      border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.07);
-      font-size: 16px;
+      font-size: 24px;
       font-weight: bold;
-      width: 260px;
+    }
+    main {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 40px 20px;
+    }
+    .login-box {
+      background: white;
+      padding: 40px;
+      border-radius: 16px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+      width: 100%;
+      max-width: 500px;
+    }
+    .login-box h2 {
       text-align: center;
-      transition: transform 0.3s ease;
+      color: #1d4ed8;
+      margin-bottom: 30px;
     }
-    .card:hover {
-      transform: translateY(-5px);
+    label {
+      display: block;
+      margin-bottom: 8px;
+      color: #111827;
+      font-weight: bold;
     }
-
-    .features {
-      list-style: none;
-      padding: 0;
-      max-width: 600px;
-      margin: 30px auto 0;
-      text-align: right;
-    }
-    .features li {
-      background-color: #e8f0fe;
-      padding: 12px 20px;
-      margin-bottom: 12px;
+    input {
+      width: 100%;
+      padding: 12px;
       border-radius: 8px;
+      border: 1px solid #d1d5db;
+      margin-bottom: 20px;
       font-size: 16px;
-      color: #0d47a1;
-      position: relative;
-      padding-right: 36px;
     }
-    .features li::before {
-      content: "✅";
+    .password-wrapper {
+      position: relative;
+    }
+    .toggle-password {
       position: absolute;
-      right: 10px;
-      top: 50%;
+      left: -17px;
+      top: 34%;
       transform: translateY(-50%);
+      background: none;
+      border: none;
+      cursor: pointer;
+    }
+    button[type="submit"] {
+      width: 100%;
+      background-color: #3b82f6;
+      color: white;
+      padding: 14px;
+      font-size: 16px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: 0.3s;
+    }
+    button[type="submit"]:hover {
+      background-color: #2563eb;
+    }
+    .back-link {
+      text-align: center;
+      margin-top: 20px;
+    }
+    .back-link a {
+      color: #1d4ed8;
+      text-decoration: none;
+      font-weight: bold;
+    }
+    .error {
+      background-color: #ffebee;
+      color: #c62828;
+      padding: 10px;
+      margin-bottom: 20px;
+      border-radius: 8px;
+      font-weight: bold;
+      text-align: center;
+    }
+    footer {
+      background: #f1f5f9;
+      text-align: center;
+      padding: 15px;
+      font-size: 14px;
     }
   </style>
 </head>
 <body>
-  <header>
-    <div class="logo">CMT | نظام إدارة المشاريع</div>
-    <nav>
-      <a href="#home">الرئيسية</a>
-      <a href="#goals">الأهداف</a>
-      <a href="#features">المميزات</a>
-      <a href="Register.php">إنشاء حساب</a>
-      <a href="login.php">تسجيل الدخول</a>
-    </nav>
-  </header>
 
-  <section class="hero" id="home">
-    <h1 data-aos="fade-up">مرحباً بك في نظام CMT 👋</h1>
-    <p data-aos="fade-up" data-aos-delay="200">
-      منصة ذكية لإدارة مشاريع الطلاب الجامعية بكل سهولة وتنظيم. تساعدك على إدارة الفريق، إنشاء المهام، متابعة التقدم، رفع الملفات، التواصل الفوري، وأكثر بكثير.
-    </p>
-    <button onclick="location.href='Registr.php'" data-aos="zoom-in" data-aos-delay="400">ابدأ الآن</button>
-  </section>
+  <!-- ترويسة النظام -->
+  <header>نظام إدارة المشاريع CMT</header>
 
-  <section class="section" id="about">
-    <h2 data-aos="fade-up">حول النظام</h2>
-    <p data-aos="fade-up" data-aos-delay="200">
-      تم تطوير نظام CMT خصيصًا لدعم طلاب الجامعات في تنظيم مشاريعهم. يوفر النظام لوحة تحكم تفاعلية تمكن الطلاب من إضافة المشاريع، تعيين المهام، التواصل بين الأعضاء، إرسال إشعارات فورية، وتحميل التقارير، بالإضافة إلى حفظ كافة السجلات في قاعدة بيانات متكاملة.
-    </p>
-  </section>
+  <main>
+    <div class="login-box">
+      <h2>تسجيل الدخول</h2>
 
-  <!-- قسم الأهداف -->
-  <section class="section" id="goals" style="background-color: #f9f9f9;">
-    <h2 data-aos="fade-up">🎯 أهداف النظام</h2>
-    <div class="card-container">
-      <div class="card" data-aos="fade-up" data-aos-delay="100">📁 تسهيل إدارة المشاريع الطلابية</div>
-      <div class="card" data-aos="fade-up" data-aos-delay="200">📌 تنظيم المهام وتوزيعها بين الأعضاء</div>
-      <div class="card" data-aos="fade-up" data-aos-delay="300">💬 تعزيز التواصل بين الفريق والمشرف</div>
-      <div class="card" data-aos="fade-up" data-aos-delay="400">📤 تتبع التقدم ورفع الملفات بمرونة</div>
+      <!-- عرض رسالة الخطأ إن وُجدت -->
+      <?php if (isset($_SESSION['login_error'])): ?>
+        <div class="error"><?= htmlspecialchars($_SESSION['login_error']) ?></div>
+        <?php unset($_SESSION['login_error']); ?>
+      <?php endif; ?>
+
+      <!-- نموذج تسجيل الدخول -->
+      <form method="POST" action="login.php">
+        <label for="studentId">رقم القيد</label>
+        <input type="text" id="studentId" name="studentId" required>
+
+        <label for="password">كلمة المرور</label>
+        <div class="password-wrapper">
+          <input type="password" id="password" name="password" required>
+          <!-- زر عرض/إخفاء كلمة المرور -->
+          <button type="button" class="toggle-password" onclick="togglePassword(this)">
+            👁
+          </button>
+        </div>
+
+        <!-- زر الدخول -->
+        <button type="submit">دخول</button>
+      </form>
+
+      <!-- روابط مساعدة -->
+      <div class="back-link">
+        <p>ليس لديك حساب؟ <a href="Register.php">إنشاء حساب جديد</a></p>
+        <p><a href="index.html">العودة إلى الصفحة الرئيسية</a></p>
+      </div>
     </div>
-  </section>
+  </main>
 
-  <!-- قسم المميزات -->
-  <section class="section" id="features">
-    <h2 data-aos="fade-up">✨ مميزات النظام</h2>
-    <ul class="features" data-aos="fade-up" data-aos-delay="200">
-      <li>لوحة تحكم خاصة بكل طالب ومشرف</li>
-      <li>نظام تنبيهات بالمواعيد النهائية</li>
-      <li>إمكانية رفع الملفات واستبدالها</li>
-      <li>دردشة داخلية للاستفسارات</li>
-      <li>عرض المهام، تتبع التقدم، والتقييم</li>
-      <li>واجهة بسيطة ومتجاوبة لجميع الأجهزة</li>
-    </ul>
-  </section>
+  <!-- التذييل -->
+  <footer>جميع الحقوق محفوظة &copy; 2025 - نظام CMT</footer>
 
-  <footer>
-    جميع الحقوق محفوظة &copy; 2025 - CMT | أداة التعاون وإدارة المشاريع
-  </footer>
-
-  <!-- AOS Animation Library -->
-  <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+  <!-- سكربت عرض كلمة المرور -->
   <script>
-    AOS.init({
-      duration: 1000,
-      once: true,
-    });
+    function togglePassword(el) {
+      const input = el.parentElement.querySelector('input');
+      input.type = input.type === 'password' ? 'text' : 'password';
+    }
   </script>
 </body>
 </html>
