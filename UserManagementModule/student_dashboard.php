@@ -12,6 +12,14 @@ try {
   $conn = $db->connect();
   $studentId = $_SESSION['user']['id'];
 
+  // ✅ جلب عدد الإشعارات الغير مقروءة
+  $notifStmt = $conn->prepare("SELECT COUNT(*) AS unread_count FROM notifications WHERE user_id = ? AND is_read = 0");
+  $notifStmt->bind_param("i", $studentId);
+  $notifStmt->execute();
+  $notifCountResult = $notifStmt->get_result()->fetch_assoc();
+  $unreadCount = $notifCountResult['unread_count'];
+
+  // ✅ جلب معلومات المشروع
   $stmt = $conn->prepare("
     SELECT p.*, u.name AS supervisor_name
     FROM projects p
@@ -75,6 +83,24 @@ try {
       transition: background-color 0.3s;
     }
     .logout-btn:hover { background-color: #b71c1c; }
+
+    .notif-btn {
+      position: absolute;
+      right: 20px;
+      top: 50%;
+      transform: translateY(-50%);
+      background-color: <?= $unreadCount > 0 ? '#ff7043' : '#757575' ?>;
+      color: white;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-weight: bold;
+      text-decoration: none;
+      font-size: 14px;
+      transition: background-color 0.3s;
+    }
+
+    .notif-btn:hover { background-color: #e65100; }
+
     main {
       max-width: 800px;
       margin: 40px auto;
@@ -83,10 +109,7 @@ try {
       border-radius: 12px;
       box-shadow: 0 8px 20px rgba(0,0,0,0.1);
     }
-    h2 {
-      color: #0d47a1;
-      text-align: center;
-    }
+    h2 { color: #0d47a1; text-align: center; }
     .project-box {
       border: 1px solid #ccc;
       padding: 20px;
@@ -136,6 +159,9 @@ try {
 <header>
   لوحة الطالب - نظام إدارة المشاريع CMT
   <a href="logout.php" class="logout-btn">تسجيل الخروج</a>
+  <a href="../NotificationAndCommunicationModule/notifications.php" class="notif-btn">
+    🔔 الإشعارات <?= $unreadCount > 0 ? "($unreadCount)" : "" ?>
+  </a>
 </header>
 
 <main>
@@ -163,20 +189,18 @@ try {
 
       <?php if ($status === 'تمت الموافقة'): ?>
         <div class="actions">
-  <a href="../TaskManagementModule/tasks.php" class="action-button">📋 عرض المهام</a>
-  <?php if ($isLeader): ?>
-    <a href="../TaskManagementModule/add_task.php" class="action-button">➕ إضافة مهمة</a>
-  <?php endif; ?>
-  <a href="questions.php" class="action-button">💬 استفسار للمشرف</a>
-</div>
-
+          <a href="../TaskManagementModule/tasks.php" class="action-button">📋 عرض المهام</a>
+          <?php if ($isLeader): ?>
+            <a href="../TaskManagementModule/add_task.php" class="action-button">➕ إضافة مهمة</a>
+          <?php endif; ?>
+          <a href="../NotificationAndCommunicationModule/student_chat.php?project_id=<?= $project['id'] ?>" class="action-button">💬 دردشة المشروع</a>
+        </div>
       <?php elseif ($status === 'مرفوض'): ?>
         <div class="actions">
           <a href="../ProjectManagementModule/create_project.php" class="action-button">➕ تسجيل مشروع جديد</a>
         </div>
       <?php endif; ?>
     </div>
-
   <?php else: ?>
     <div style="text-align:center; margin-top: 40px;">
       <a href="../ProjectManagementModule/create_project.php" class="action-button">➕ تسجيل مشروع جديد</a>
